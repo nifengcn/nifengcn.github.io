@@ -7,7 +7,7 @@ slug: '%ef%bc%88%e8%bd%ac%ef%bc%89extern%e4%bd%bf%e7%94%a8%e6%96%b9%e6%b3%95%e5%
 title: （转）extern使用方法及技巧
 wordpress_id: 67
 categories:
-- blog
+- tech
 tags: [c, c++]
 ---
 

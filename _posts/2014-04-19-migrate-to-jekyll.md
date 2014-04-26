@@ -2,7 +2,7 @@
 layout: post
 title: "迁移到jekyll"
 description: "从wordpress迁移到jekyll"
-category: blog
+category: tech
 tags: [jekyll, ruby]
 ---
 {% include JB/setup %}

@@ -1,6 +1,6 @@
 ---
 layout: page
-title: one's talk
+title: Index
 tagline: Supporting tagline
 ---
 

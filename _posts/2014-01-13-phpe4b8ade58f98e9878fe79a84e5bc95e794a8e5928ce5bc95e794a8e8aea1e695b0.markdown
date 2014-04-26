@@ -1,0 +1,182 @@
+---
+author: nifeng
+comments: true
+date: 2014-01-13 15:12:09+00:00
+layout: post
+slug: php%e4%b8%ad%e5%8f%98%e9%87%8f%e7%9a%84%e5%bc%95%e7%94%a8%e5%92%8c%e5%bc%95%e7%94%a8%e8%ae%a1%e6%95%b0
+title: php中变量的引用和引用计数
+wordpress_id: 343
+categories:
+- tech
+tags:
+- php
+---
+
+要说说php中的变量的引用和引用计数，首先需要来看下变量的结构(php-5.4.22)：
+
+{% highlight c %}
+struct _zval_struct {
+     /* Variable information */
+     zvalue_value value;     /* value */
+     zend_uint refcount__gc;
+     zend_uchar type;    /* active type */
+     zend_uchar is_ref__gc;
+}; 
+{% endhighlight %}
+
+其中refcount_gc表示该结构体的引用计数，is_ref_gc表示该结构体是不是一个引用。
+
+首先要说明的是这两个字段的联系没有字面上看上去那么的紧密：
+
+refcount_gc表示指向这个结构体的符号（php中的变量,用变量名来描述似乎更准确些）的个数，
+主要作用是用来进行垃圾回收的（C++中实现智能指针的一个常用方法就是采用一个使用计数，
+然后定义复制控制成员，即复制构造函数、赋值操作符和析构函数，来实现对指针的合理使用，避免悬挂指针），
+在php中也是类似的思路，增加refcount_gc,再对各种情况下的赋值进行控制，来优化对内存的使用，同时实现内存回收；
+而is_ref_gc则是用来区分普通变量和引用变量（即使用&来定义的变量）的。
+
+refcount_gc和is_ref_gc都会对赋值时的具体行为产生影响。
+对象属性的赋值不在这次讨论范围之内，对象属性的赋值操作会调用ZEND_ASSIGN_OBJ_SPEC类的api。
+
+php中的变量可以分为如下几种类型：
+
+{% highlight c %}
+#define IS_CONST    (1<<0)
+#define IS_TMP_VAR  (1<<1)
+#define IS_VAR      (1<<2)
+#define IS_UNUSED   (1<<3)  /* Unused variable */
+#define IS_CV       (1<<4)  /* Compiled variable */
+{% endhighlight %}
+
+在这边主要分析普通赋值和引用赋值两大类，根据变量类型的不同，分别对应不同的zend api,详细如下：
+
+{% highlight c %}
+//普通赋值
+ZEND_ASSIGN_SPEC_VAR_CONST_HANDLER
+ZEND_ASSIGN_SPEC_VAR_TMP_HANDLER
+ZEND_ASSIGN_SPEC_VAR_VAR_HANDLER
+ZEND_ASSIGN_SPEC_VAR_CV_HANDLER
+ZEND_ASSIGN_SPEC_CV_CONST_HANDLER
+ZEND_ASSIGN_SPEC_CV_TMP_HANDLER
+ZEND_ASSIGN_SPEC_CV_VAR_HANDLER
+ZEND_ASSIGN_SPEC_CV_CV_HANDLER
+
+//引用赋值
+ZEND_ASSIGN_REF_SPEC_VAR_VAR_HANDLER
+ZEND_ASSIGN_REF_SPEC_VAR_CV_HANDLER
+ZEND_ASSIGN_REF_SPEC_CV_VAR_HANDLER
+ZEND_ASSIGN_REF_SPEC_CV_CV_HANDLER
+{% endhighlight %}
+
+##普通赋值##
+普通赋值类的每一个api里面都用到zend_assign_tmp_to_variable，zend_assign_const_to_variable，zend_assign_to_variable这3个函数，
+实际上这3个函数并不是每个api里面都必须用到，在api中有很多类似于下面的逻辑判断：
+(不知道是否因为出于编译优化还是为了方便以后进行修改或者扩展的考虑，增加了很多明显为true或者false的判断。)
+
+{% highlight c %}
+if (IS_CONST == IS_TMP_VAR) {
+    value = zend_assign_tmp_to_variable(variable_ptr_ptr, value TSRMLS_CC);
+} else if (IS_CONST == IS_CONST) {
+    value = zend_assign_const_to_variable(variable_ptr_ptr, value TSRMLS_CC);
+} else {
+    value = zend_assign_to_variable(variable_ptr_ptr, value TSRMLS_CC);
+}
+{% endhighlight %}
+
+其中zend_assign_tmp_to_variable和zend_assign_const_to_variable的具体实现基本差不多，
+下面主要通过对zend_assign_const_to_variable，zend_assign_to_variable这两函数的分析，
+来看下refcount_gc和is_ref_gc对赋值具体行为的影响。
+
+###zend_assign_const_to_variable###
+
+先来看一下最简单的情形，将一个常量赋值给一个变量（调用zend_assign_const_to_variable），我们首先可以设想一下有哪些情况需要考虑：
+
+{% highlight php %}
+$a = 3;
+$a = 4;
+xdebug_debug_zval('a');
+
+$b = $c = 5;
+xdebug_debug_zval('b');
+xdebug_debug_zval('c');
+$c = 6;
+xdebug_debug_zval('b');
+xdebug_debug_zval('c');
+
+$d = 7;
+$e = &$d;
+xdebug_debug_zval('d');
+xdebug_debug_zval('e');
+$d = 8;
+xdebug_debug_zval('d');
+xdebug_debug_zval('e');
+{% endhighlight %}
+
+结果如下：
+
+{% highlight php %}
+a: (refcount=1, is_ref=0)=4
+b: (refcount=2, is_ref=0)=5
+c: (refcount=2, is_ref=0)=5
+b: (refcount=1, is_ref=0)=5
+c: (refcount=1, is_ref=0)=6
+d: (refcount=2, is_ref=1)=7
+e: (refcount=2, is_ref=1)=7
+d: (refcount=2, is_ref=1)=8
+e: (refcount=2, is_ref=1)=8
+{% endhighlight %}
+
+基本上我们可以把变量$a分为引用和非引用两种情况来考虑：
+
+当$a为非引用时，将一个常量赋值给$a时，
+首先需要将$a原来所对应的结构体中的refcount减一，由于右值为常量，所以$a新对应的结构体的refcount为1，
+另外还需要考虑到当原来的结构体中的refcount减到0时需要将该结构体给delete掉（想想智能指针的实现）;
+
+当$a为一个引用时，这时候refcount应该如何变化呢？
+从上面的结果来看新的结构体中的refcount和旧结构体中的refcount是相等的，貌似旧的结构体也被delete掉了。
+
+看下面函数zend_assign_const_to_variable对应的实现也确实是这样的:
+
+{% highlight php %}
+if (UNEXPECTED(Z_REFCOUNT_P(variable_ptr) > 1) &&
+    EXPECTED(!PZVAL_IS_REF(variable_ptr))) {
+    /* we need to split */
+    Z_DELREF_P(variable_ptr);
+    GC_ZVAL_CHECK_POSSIBLE_ROOT(variable_ptr);
+    ALLOC_ZVAL(variable_ptr);
+    INIT_PZVAL_COPY(variable_ptr, value);
+    zval_copy_ctor(variable_ptr);
+    *variable_ptr_ptr = variable_ptr;
+    return variable_ptr;
+} else {
+    if (EXPECTED(Z_TYPE_P(variable_ptr) <= IS_BOOL)) {
+        /* nothing to destroy */
+        ZVAL_COPY_VALUE(variable_ptr, value);
+        zendi_zval_copy_ctor(*variable_ptr);
+    } else {
+        ZVAL_COPY_VALUE(&garbage, variable_ptr);
+        ZVAL_COPY_VALUE(variable_ptr, value);
+        zendi_zval_copy_ctor(*variable_ptr);
+        _zval_dtor_func(&garbage ZEND_FILE_LINE_CC);
+    }
+    return variable_ptr;
+}
+{% endhighlight %}
+
+聪明的你在上面的例子中可能会提出这么一个疑问：
+在$d=8之前加一句$f=$d，如果$d=8这个操作导致旧的结构体被delete掉，那$f不就成“野指针”了么？
+我们来看看zend_assign_to_variable的实现。
+
+
+
+###zend_assign_to_variable###
+
+(tbc)
+
+
+
+##引用赋值##
+引用赋值类的每个api最后都是调用zend_assign_to_variable_reference这个函数来实际具体的赋值操作的。
+
+###zend_assign_to_variable_reference###
+
+(tbc)
