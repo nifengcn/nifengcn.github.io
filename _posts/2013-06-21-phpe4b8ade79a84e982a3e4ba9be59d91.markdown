@@ -1,0 +1,60 @@
+---
+author: nifeng
+comments: true
+date: 2013-06-21 15:00:31+00:00
+layout: post
+slug: php%e4%b8%ad%e7%9a%84%e9%82%a3%e4%ba%9b%e5%9d%91
+title: php中的那些坑
+wordpress_id: 293
+categories:
+- tech
+tags:
+- lamp
+- php
+---
+
+* php没有块作用域
+
+* php中的数组
+
+php里面的数组可以分为两种:一种是类似于C语言中的普通数组(key)，另一个类似于C语言中的hash表。
+
+在php里面对这两种大多时候都不需要进行区分，但是对数据进行json_encode处理的时候就可能产生一些问题。
+前者在json_encode处理之后是一个json数组，而后者处理之后则是一个json对象。
+这一点倒不是什么坑，但是如果你对普通数组先进行array_unique处理，再json_encode的话，就需要注意了。
+{% highlight php %}
+array_unique(array(1, 1, 2));
+{% endhighlight %}
+结果是：
+{% highlight php %}
+array(2) {
+  [0]=>
+  int(1)
+  [2]=>
+  int(2)
+}
+{% endhighlight %}
+而对上面的结果进行json_encode得到的则是一个json对象，因此如果还期望得到一个json数组的话，通常可以进行如下处理
+{% highlight php %}
+array_values(array_unique(array(1, 1, 2)));
+{% endhighlight %}
+
+* urlencode和urldecode
+
+urlencode会对'%'进行编码，例如：
+
+urlencode('%abc%')的结果为'%25abc%25'
+
+进行了几次urlencode，进行相同次数的urldecode才能得到原来的结果，即urlencode和urldecode必须对应。
+如果对不需要urldecode的字符进行了urldecode处理的话，可能会产生一些难以预期的结果。例如：
+
+urldecode('abc')的结果仍然是'abc',但是如果字符中包含%的话，urldecode就会尝试解码，从而产生乱码。
+
+在php手册里面有如下的notes:
+>The supergloBals $_GET and $_REQUEST are already decoded.<br/>
+>Using urldecode() on an element in $_GET or $_REQUEST could have unexpected and dangerous results.
+
+如果对$_GET和$_REQUEST中的结果再进行decode的话，就可能产生sql注入。
+[这边](http://demon.tw/programming/php-urldecode-sql-injection.html)有个由此原因造成的漏洞案例。 
+
+

@@ -1,0 +1,36 @@
+---
+author: nifeng
+comments: true
+date: 2013-02-22 09:02:47+00:00
+layout: post
+slug: ie6-bug%e5%b0%8f%e7%bb%93
+title: html中的那些坑
+wordpress_id: 246
+categories:
+- tech
+tags:
+- html
+---
+
+* 下面的写法在IE6中某种情况下会出错:
+{% highlight html %}
+<a href="javascript:void(0)"></a>
+{% endhighlight %}
+推荐的写法是：
+{% highlight html %}
+<a href="#" onclick="return false"></a>
+{% endhighlight %}
+
+* form的enctype属性为编码方式,常用有两种：
+
+application/x-www-form-urlencoded和multipart/form-data，默认为application/x-www-form-urlencoded。
+
+如果没有type='file'的话，则使用默认的就可以了。
+但是如果存在type='file'的话，就必须将编码方式修改为multipart/form-data。
+此时浏览器会把整个表单以控件为单位分割，
+并为每个部分加上Content-Disposition(form-data或者file),Content-Type(默认为text/plain),name(控件name)等信息，并加上分割符(boundary)。
+
+* form元素进行请求时，如果是Get方式进行请求，action标签属性中如果存在"?子句"，GET方式将会忽略这个子句。
+浏览器会自动将表单域的元素的name和value组成键值对放在请求的Url后面。
+如果以Post方式进行请求，action标签属性中存在"?子句",Post方式会保留这个子句，服务端也可以获得这个子句。
+

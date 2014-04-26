@@ -1,0 +1,80 @@
+---
+author: nifeng
+comments: true
+date: 2013-01-08 10:52:34+00:00
+layout: post
+slug: redis%e4%bd%bf%e7%94%a8%e5%85%a5%e9%97%a8
+title: redis使用入门
+wordpress_id: 236
+categories:
+- tech
+tags:
+- key-value
+- nosql
+- php
+- redis
+---
+
+
+
+
+
+
+最近，项目有做个排行榜的需求，使用redis来实现比较方便，因此熟悉一下redis的使用。
+
+很久之前挖得一个坑了，今天填一填内容，这篇文章只会简单介绍如何使用redis，包括安装，配置，启动，主从设置，
+php中使用redis的接口以及设置一些的监控，待有时间研究一下redis的源码，再写一些深入的内容。
+
+
+### 安装
+
+redis基本上没有外部依赖，用到一些数据结构和算法，作者都自己实现了并没有使用一些库什么的。
+这使得安装起来非常简单，而且编译安装后的文件夹直接copy到另一台机器上使用也没有什么问题（至少我试验的几台机器都是如此）。
+
+### 配置及启动
+
+redis/bin中主要包含如下的可执行文件：
+
+redis-server，redis-benchmark，redis-check-aof ，redis-check-dump，redis-cli 
+
+可以在redis目录下新建一个var目录来保存一些运行时的临时文件，日志，序列化文件等。
+
+1.  bin/redis-server，可以指定配置文件，同时在运行之后进行配置。
+
+    配置文件可以参考：[https://raw.github.com/antirez/redis/2.4/redis.conf](https://raw.github.com/antirez/redis/2.4/redis.conf)
+
+    还有一个中文版的可以参考：[http://www.4wei.cn/archives/1001521](http://www.4wei.cn/archives/1001521)
+
+2.  bin/redis-benchmark redis服务器性能测试
+
+    redis-benchmark -h localhost -p 6379 -c 100 -n 100000
+
+    100个并发连接，100000个请求，检测host为localhost 端口为6379的redis服务器性能
+
+3.  redis-check-aof检查日志文件
+
+4.  redis-check-dump检查磁盘存储文件
+
+5.  redis-cli命令行客户端，该客户端可以指定host和port，默认会连接127.0.0.1:6379，也可以使用telnet和nc与服务器端通信。
+
+### 主从设置
+
+redis的备份方式主要有两种：
+
+* 一是全量的，就是定时将内存中的快照保存到硬盘中，
+* 另外一种就是增量的，将接受到的所有的命令都记录到日志中。
+
+其中增量的模式会导到日志文件非常大，redis支持了一个日志重写的功能：
+
+即是当日志达到一定的大小时，对日志进行重写，合并一些命令来减小日志文件的大小。全量的备份方式由于是定时保存快照，可能会丢失一些数据。
+
+比较推荐主从模式是一主多从，对主进行写操作，对从库进行读操作，主库不开启任务持久化，可以从从库中选择两台开启aof持久化。
+需要注意的是如果主库挂了，最好不要直接重启主库，如果直接重启主库，会导致从库的 aof文件被直接覆盖掉。
+
+### Php中使用redis
+
+使用的比较广的是两个扩展：predis和phpredis，
+* predis是php的原生接口，由redis官方推出，但要求php5.3以上
+* phpredis是php的c扩展，我使用的就是phpredis
+
+
