@@ -1,0 +1,69 @@
+---
+author: nifeng
+comments: true
+date: 2011-08-20 17:43:38+00:00
+layout: post
+slug: '%e6%ba%90%e7%a0%81%e5%ae%89%e8%a3%85lamp'
+title: 源码安装lamp
+wordpress_id: 153
+categories:
+- tech
+tags:
+- lamp
+---
+
+最近一直在搭这个环境，虽然用apt/yum比较方便，但是为了熟悉下linux下的Tarball(即从源码开始安装)安装方式，还是决定从头开始。
+一开始是在ubuntu下搭的环境，花了一两天时间，也成功了。
+可是后来在安装python-mysqldb时，提示缺少一个文件，
+后来GOOGLE下，原来是在安装mysql时少指定了`--enable-thread-safe-client`这个参数，这个参数用来指定编译线程安全版的MySQL客户端库，
+将创建一个libmysqlclient_r库。于是果断删除了mysql重新安装，孰不知从此走上了不归路。
+其实后来才知道其实不重新安装mysql也是可以的，那就是修改python-mysqldb的安装参数，取消对libmysqlclient_r库的需求
+（不过这个方法没有亲自试过，应该是有效的）。
+
+首先给出我主要参考[一篇文章](http://www.docin.com/p-44621401.html)，这是再ubuntu下从源码开始搭建lamp的一篇文章。
+
+虽然有一次搭建成功的经历，可后来每次安装mysql时，总是在运行mysql_install_db时提示无法解析hostname，即使我修改了hosts，可依旧提示出错，
+由于mysql中是用resolveip这个命令来解析的，我就直接用这个命令来解析hostname，于是crash了，
+提示的意思大概是在某一个代码中getPageSize中出错了（在某些中文的环境里提示是段出错）。
+如果直接用--force强行跳过的话，在开启服务进程或者执行mysql命令时还是会出现同样错误。
+后来我在自己的笔记本的 ubuntu系统上也重装了N次，总是提示相同的错误，在网上找了很久也没有找到好的解决办法，
+后来在 ubuntu的一个论坛上看到有人说这是一个BUG。介个。。。可是我第一次明明已经装好了啊。。。没办法。
+不深究了，换系统，换的是fedora15 x86_64，之后花了差不多一天的时间搞定了。
+
+在搭配lamp之前 ，首先要预装一些包。
+这些包在可以现预装好，也可以在真正安装提示缺失的时候再装，由于我参考的这篇文章的安装在ubuntu底下的，
+按照里面的内容apt-get install很方便，如果是在rpm管理方式下就比较麻烦了，因为同一个功能的包在不同的发行版中名字不太一致，
+（我靠，你们就不能统一啊）。
+一般的规则是缺少XXX的话，可以apt(yum) XXX和XXX-dev(ubuntu)或者XXX-devel(fedora)，有一些比较特殊的google下就好了，
+另外在安装php时，--with-xpm-dir总是出错了，即使安装了xpm,xmp-devel也不行，没办法就只好把这个参数去掉了，
+其实有不少参数是可以去掉的，你自己掂量啊（汗）。
+
+其实绝大部分问题直接google就可以解决。
+这里只是说说大概的方法，比如在提示缺少什么库文件时，而你确定已经安装了，可以尝试做一些软连接。
+整个过程，安装apache最为轻松，安装mysql和php比较麻烦。
+
+安装apache成功后无法显示，说是权限不够的，问题可能出在两个地方：
+一个是要注意整个安装目录的访问权限，应该是可读可执行的，另外就是http.conf中，有些默认设置是Deny all，你需要修改下。
+
+mysql的参数详解可以参考这里http://dev.mysql.com/doc/refman/5.1/zh/installing.html#configure-options（这是官网），
+另外碰到的值得留意的问题有：
+
+>./include/my_global.h:1099: 错误：对 C++ 内建类型 ‘bool’ 的重声明
+
+这个错误 是不是你 先./congfigure 又重装的GCC 又make 的？
+是的话 重新./configure  在make clean  make make install  就解决了
+
+php是最后安装的，mysql和apache谁前谁后无所谓。
+安装php时，出现的错误可以参考[这里](http://www.zhuoda.org/xiezhi/103050.html)。
+说的比较到位，不像有些网上说是在centos上安装，出现的问题全使用apt-get（。。。）。
+如果发现phpinfo测试时显示文本，说明apache没有认识php，你需要使用addtype（如何使用？
+参考httpd.conf，照例子模仿，不要忽视里面的注释，很多时候它们会提供重要的信息），由于我们在编译php时指定了apache，
+所以Loadmodule不用我们自己来加了，这样的话，就不需要用`<IfModule>`这个标签了
+（我安装时用了这个标签，发现不管用。。。因为这个标签里需要指定php.ini，而实际上没有这玩意，php还是能跑的，
+不过在需要一些设置时还是需要它的。
+另外注意的是它好像必须得放在lib这个子目录下，即使编译是指定了其它路径也不行）；
+phpinfo测试时显示文本的另外一个可能的原因是php.ini里的short_open_tag需要设置成On。
+
+在整个安装的过程了，碰到了许许多多的问题，大部分问题通过Google和自己的揣摩，都可以解决。
+这里只是说了印象比较深的问题和大概的思路，并不是详细的攻略哈。授之以鱼不如授之以渔。（哈哈，得色下。其实主要是告诫自己的）。
+太晚了，睡觉去了。

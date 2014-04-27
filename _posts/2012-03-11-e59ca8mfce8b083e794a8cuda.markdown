@@ -1,0 +1,65 @@
+---
+author: nifeng
+comments: true
+date: 2012-03-11 05:29:54+00:00
+layout: post
+slug: '%e5%9c%a8mfc%e8%b0%83%e7%94%a8cuda'
+title: 在MFC调用CUDA
+wordpress_id: 167
+categories:
+- tech
+tags:
+- CUDA
+- Visual Studio
+---
+
+已经是三月份了，想到毕设一个字还没写，顿时感觉到压力有点小大，其实重点是程序还没有搞出来。
+毕设的主要内容就是把ICA算法用CUDA并行实现一下，由于原来的系统是基于MFC的，这样就涉及到在MFC当中调用CUDA程序的问题，
+查阅了一下资料，顺便记录一下，其实主要涉及的是在VS这个集成的开发环境中如何自己设定编译器和编译规则的问题。
+
+###修改文件的编译链接设置###
+
+1. 打开相应文件的属性设置窗口：  
+![](http://priv.hiphotos.baidu.com/album/s%3D740%3Bq%3D90/sign=36310b6a30adcbef05347c029c945fe0/d043ad4bd11373f064915d31a50f4bfbfaed04f5.jpg?psign=951eaee93812b31bbea0c31d8631f91bdab44aed2c73c94e)
+
+2. 修改General中的Tool为Custom Build Tool(即为自定义生成工具)，也就是自己指定编译器和生成规则，
+设置完毕后关闭属性窗口，再打开发现General底下的属性已经变成了Custom Build Step.
+
+3. 在Custome Build Step中需要设置Command Line和Outputs，如果存在编译依赖项也是需要设置Additional Dependencies的（视情况而定）。
+我这里的Command Line和Outputs设置如下（我的文件名为kernelIter.cu，具体的文件位置要根据自己的实际情况。
+如果你安装了CUDA程序生成向导，可以把生成向导生成的CUDA程序的Command Line拷贝过来，然后把文件名和位置替换下即可）：
+
+{% highlight bash %}
+Command Line:
+"D:\program\cuda\toolkit\bin\nvcc.exe"
+-arch sm_10
+-ccbin "C:\Program Files\Microsoft Visual Studio 9.0\VC\bin"
+-Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MTd"
+-I"D:\program\cuda\toolkit\include" 
+-I"D:\program\cuda\NVIDIA GPU Computing SDK\C\common\inc"
+-maxrregcount=32
+--compile
+-o "Release\kernelIter.cu.obj" "D:\研究生毕设\project\ICA2011年5月13日kernelIter.cu"
+
+ Outputs:
+$(IntDir)/$(InputName).cu.obj
+{% endhighlight %}
+
+###修改工程的编译链接设置###
+
+最好参考CUDA程序生成向导生成的CUDA程序，照着修改即可
+
+1. 工程文件Property Pages->Configuration Properties->Linker->General
+![](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=a812f1ba6a600c33f479dac92a7c6a7e/b812c8fcc3cec3fd3f7295dbd788d43f869427cb.jpg?psign=25bc7c179f510fb301d579a3d91a07f4d143ad4bd3132c73)
+
+2. 工程文件Property Pages->Configuration Properties->Linker->Input  
+![](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=86bb7c179f510fb37c197396e903f3e4/9213b07eca8065386ca196bd96dda144ac3482d0.jpg?psign=3491314f2e2eb93895a174c6d54b4a54e5dde71192ef4f68)
+
+###总结###
+
+由于VS这个集成开发环境帮我们做了许多工作，所以借助于它进行开发时，我们对编译环境，依赖项等进行设置，为我们带来了许多便利，
+但是也致使我们对整个程序从源代码编写到编译到执行缺少足够的认识，所以有时候摆脱集成开发环境的束缚，一切从命令行开始还是很有必要的。
+
+
+
+

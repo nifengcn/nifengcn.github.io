@@ -1,0 +1,116 @@
+---
+author: nifeng
+comments: true
+date: 2011-10-24 07:56:19+00:00
+layout: post
+slug: '%e6%9c%89%e5%ba%8f%e7%9f%a9%e9%98%b5%e6%9f%a5%e6%89%be%e7%bb%99%e5%ae%9a%e7%9a%84%e5%80%bc'
+title: 有序矩阵查找给定的值
+wordpress_id: 157
+categories:
+- tech
+tags:
+- 数据结构
+- 算法
+---
+
+一个矩阵，每一行的元素，从左到右保持严格递增，每一列的元素，从上到下保持严格递增。（矩阵中的每一个元素都不相同）
+
+分析：
+
+首先想到的是就是二分查找，但是这里需要注意的是在一维空间中，二分查找总是将待查找的空间一分为二，而在二维空间中，总是一分为四。
+假设矩阵最左上角的点为begRow,begCol,最右下角的点为endRow,endCol,
+那么我们需要考查的点是`midRow=begRow+(endRow-begRow)/2`, `midCol=begCol+(endCol-begCol)/2`,这个点将将空间分为四个部分。
+我们分别用左上角的点和右下角的点来表示该空间。
+
+当`查找元素=matrix[midRow][midCol]`时，lucky~~搜索成功。
+
+当`查找元素<matrix[midrow][midcol]`时，则右下空间不需要查找了。
+
+当`查找元素>matrix[midrow][midcol]`时，在左上空间不需要昌查找。
+
+大体思路就是这样，由于是采用递归，所以必须有返回的条件或者限制啥时候开始递归，另外可以增加一引起剪枝的方法，提高算法实际执行的效率。
+时间复杂度`T(n)=3\*T(n/4)+O(1)`，计算这种时间复杂度有个什么定理的，忘了。。。囧。回头补上。
+
+(更新：利用主定理，时间复杂度为O(n^log4 3))
+
+程序的代码如下：
+
+{% highlight c++%}
+#include<iostream> 
+using namespace std;
+int matrix[4][4]={ {1,4,7,9},{2,5,8,10},{3,6,11,12},{13,14,15,16} };
+/*
+ * 1    4   7   9
+ * 2    5   8   10
+ * 3    6   11  12
+ * 13   14  15  16
+ */
+//int matrix[1][1]={{1}};
+int posRow = -1;
+int posCol = -1;
+int maxRow = 3;
+int maxCol = 3;
+bool find(int begRow,int begCol,int endRow,int endCol,int data){
+    if(begRow > endRow || begCol > endCol 
+            || begRow < 0 || endRow > maxRow
+            || begCol < 0 || endCol > maxCol)
+        return false;
+
+    int midRow = (begRow + endRow) / 2;
+    int midCol = (begCol + endCol) / 2;
+    if (data == matrix[midRow][midCol]) {
+        posRow=midRow;
+        posCol=midCol;
+        return true;
+    } else if (data < matrix[midRow][midCol] ) {
+        return find(begRow,begCol,endRow,midCol - 1,data)
+               || find(begRow,midCol,midRow -1 ,endCol,data);
+    }else {
+        return find(midRow + 1,begCol,endRow,midCol,data)
+               || find(begRow,midCol + 1,endRow,endCol,data);
+    }
+}
+
+int main(int argc,char* argv[]){
+    cout<<"data 11 position: ";
+    if (find(0,0,3,3,11)) {
+        cout<<posRow<<'\t'<<posCol<<endl;
+    } else {
+        cout<<"not find"<<endl;
+    }
+
+    cout<<"data 16 position: ";
+    if (find(0,0,3,3,16)) {
+        cout<<posRow<<'\t'<<posCol<<endl;
+    } else {
+        cout<<"not find"<<endl;
+    }
+
+    cout<<"data 2 position: ";
+    if (find(0,0,3,3,2)) {
+        cout<<posRow<<'\t'<<posCol<<endl;
+    } else {
+        cout<<"not find"<<endl;
+    }
+
+    cout<<"data 33 position: ";
+    if (find(0,0,3,3,33)) {
+        cout<<posRow<<'\t'<<posCol<<endl;
+    } else {
+        cout<<"not find"<<endl;
+    }
+    return 0;
+}
+{% endhighlight %}
+
+结果输出如下：
+{% highlight c++%}
+data 11 position: 2 2
+data 16 position: 3 3
+data 2 position: 1  0
+data 33 position: not find
+{% endhighlight %}
+
+经过硕哥的提点（硕哥V5），该问题还有更优的解法，更优的解法的时间复杂度为O(M+N),M和N分别为矩阵的行和列。具体的算法如下：
+
+从矩阵的左下角开始找起，如果当前的元素比查找的元素大的话，则向上走，如果当前的元素比查找的元素小的话，则向右走。
