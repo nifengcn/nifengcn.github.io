@@ -1,0 +1,151 @@
+---
+author: nifeng
+comments: true
+date: 2011-05-05 13:18:29+00:00
+layout: post
+slug: '%e8%85%be%e8%ae%af%e7%9a%84%e9%9d%a2%e8%af%95%e9%a2%98%ef%bc%88%e5%85%b3%e4%ba%8e%e6%8c%87%e9%92%88%ef%bc%89'
+title: 腾讯的面试题（关于指针）
+wordpress_id: 134
+categories:
+- tech
+tags:
+- c
+- c++
+---
+
+题目：
+
+{% highlight c %}
+int a[]={1,2,3,4,5,6,7,8,9};
+
+short *p=(short*)(a+2);
+short *q=(short*)a;
+
+a[p-q]=?
+{% endhighlight %}
+
+回答：
+
+这道题实际上是有陷阱的，首先你得先向面试官确定一下，int和short的存储空间，因为在C++标准中，只规定了short和int的最小存储空间为16位，
+而具体的大小则和编译器有关。比如在VC中int为4个字节，short为2个字节。
+
+C++的内置类型与其在计算机的存储器中的表示方式紧密相关。我们可以用地址表示从该地址开始的任何几个不同大小的位的集合。
+要让地址有意义，就必须要知道存储在该地址的值的类型。一旦知道了该地址的值的类型，就知道了表示该类型的值需要多少位和如何解释这些位。
+因此在C++中定义一个指针时，我们总是要给出这个指针所指向的值的类型，比如，int \*a。
+
+大多数计算机将存储器中的每一个字节和一个称为地址的数关联起来（也就是按字节编址），也就是这是一个一对一的关系。
+如果地址加1的话，那么地址将指向当前字节的下一个字节。（注意是地址而不是指针）。
+
+下面我们来看一下测试结果，测试是在VC++环境下进行的：
+
+代码：
+
+{% highlight c %}
+int a[]={1,2,3,4,5,6,7,8,9};
+short *p=(short*)(a+2);
+short *q=(short*)a;
+
+cout<<*p<<endl;
+cout<<*q<<endl;
+cout<<p-q<<endl;
+cout<<a<<endl;
+int *pa=a;
+cout<<++pa<<endl;
+cout<<pa-a<<endl;
+{% endhighlight %}
+
+结果：[![](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=a3f058a3279759ee4e5064ca82cb7867/a9d3fd1f4134970a9b442c8194cad1c8a7865d6c.jpg?psign=394fdf16d53f8794aa33461ad232c1951bd5ad6edfc402d4)](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=a3f058a3279759ee4e5064ca82cb7867/a9d3fd1f4134970a9b442c8194cad1c8a7865d6c.jpg?psign=394fdf16d53f8794aa33461ad232c1951bd5ad6edfc402d4)
+
+a 的值是001DFA9C,而pa的地址是001DFAA0,这里的数值给出的是地址，
+由于a和pa是int\*指针，所以中间差了4个字节，也就是说在这里的一个地址是对应一个字节。
+但是为什么pa和a的差明明是1，而对应的地址值却差了4，我猜应该是对指针的加减以及自增长都进行了重载运算，
+这样的目的就是为了前面所说的，仅仅知道地址是不够的，我们还需要该地址的值的类型，这样就知道了表示该类型的值需要多少位和如何解释这些位。
+估计这也大概是设计指针的目的，同时这也体现了指针和地址的区别。
+
+我们再回到这道题本身p和q差了8个字节，由于p,q都是short\*，而short在VC++中是占2个字节的，所以p-q应该是4。
+
+底下我们跳出这道题，看到下面代码的结果:
+
+代码：
+
+{% highlight c %}
+int a[]={1,2,3,4,5,6,7,8,9};
+
+short *p=(short*)(a+1);
+short *q=(short*)a;
+
+short* q1=q+1;
+short* q2=q+2;
+
+cout<<q<<'\t'<<*q<<endl;
+cout<<q1<<'\t'<<*q1<<endl;
+cout<<q2<<'\t'<<*q2<<endl;
+cout<<p<<'\t'<<*p<<endl;
+{% endhighlight %}
+
+结果：[![](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=2ed610d2500fd9f9a4175168151def5b/9345d688d43f879461ec7780d31b0ef41bd53a08.jpg?psign=8789d3adc995d143a3baea1773d94d635aafa40f49fb27b0)](http://priv.hiphotos.baidu.com/album/s%3D1100%3Bq%3D90/sign=2ed610d2500fd9f9a4175168151def5b/9345d688d43f879461ec7780d31b0ef41bd53a08.jpg?psign=8789d3adc995d143a3baea1773d94d635aafa40f49fb27b0)
+
+分析：结果可能跟我们想的有点不一样，其实之前对于short* q=(short*)a;cou<<*q<<endl;
+显示结果为1就没有一点好奇么？这里就涉及到了字节的存储顺序，即所谓的高位字节优先（BIG ENDIAN）和低位字节优先(LITTLE ENDIAN)，
+进行网络编程的时候，就数据传送前就经常存在这么一步转化。其它通常的BIG ENDIAN和LITTLE ENDIAN仅仅指字节顺序，
+在硬件设计者的术语中，在一个字节的内部中也分BIG ENDIAN和LITTLE ENDIAN，但是这些bit顺序的不同是透明的，
+程序员只需要按照逻辑顺序来看待和操作字节内部的bit即可。
+
+关于BIG ENDIAN和LITTLE ENDIAN，在以下[这篇文章](http://www.cppblog.com/aaxron/archive/2011/02/28/140786.aspx)中说得很清楚：
+
+以下就是引用的这篇文章的内容：
+
+*********************************************************************
+
+字节顺序是指占内存多于一个字节类型的数据在内存中的存放顺序，通常有小端、大端两种字节顺序。
+
+小端字节序指低字节数据存放在内存低地址处，高字节数据存放在内存高地址处；
+
+大端字节序是高字节数据存放在低地址处，低字节数据存放在高地址处。
+
+基于X86平台的PC机是小端字节序的
+    因为现行的计算机都是以八位一个字节为存储单位，那么一个16位的整数，也就是C语言中的short，在内存中可能有两种存储顺序big-endian和litte-endian。考虑一个short整数0x3132(0x32是低位，0x31是高位)，把它赋值给一个short变量，那么它在内存中的存储可能有如下两种情况：
+
+[![](http://priv.hiphotos.baidu.com/album/s%3D740%3Bq%3D90/sign=9d946847f3d3572c62e29ed8ba28121a/ca1349540923dd54c10b98c6d009b3de9c824827.jpg?psign=30c3c3897e3e6709c7cc4bcb3bee505cf8dcd100b8a1759f)](http://priv.hiphotos.baidu.com/album/s%3D740%3Bq%3D90/sign=9d946847f3d3572c62e29ed8ba28121a/ca1349540923dd54c10b98c6d009b3de9c824827.jpg?psign=30c3c3897e3e6709c7cc4bcb3bee505cf8dcd100b8a1759f)
+
+可以做个实验
+在Windows上下如下程序
+
+{% highlight c %}
+#include 
+#include 
+
+int main(void)
+{
+    short test;
+    FILE* fp;
+
+    test = 0x3132; /* (31ASIIC码的'1', 32ASIIC码的'2') */
+    if ((fp = fopen("c:\\test.txt", "wb")) == NULL)
+        assert(0);
+    fwrite(&test, sizeof(short), 1, fp);
+    fclose(fp);
+    return 0;
+}
+{% endhighlight %}
+
+然后在C盘下打开test.txt文件，可以看见内容是21，而test等于0x3132，可以明显的看出来x86的字节顺序是低位在前。
+如果我们把这段同样的代码放到(big-endian)的机器上执行，那么打出来的文件就是12。这在本机中使用是没有问题的。
+但当你把这个文件从一个big-endian机器复制到一个little-endian机器上时就出现问题了。
+如上述例子，我们在big-endian的机器上创建了这个test文件，把其复制到little-endian的机器上再用fread读到一个short里面，
+我们得到的就不再是0x3132而是0x3231了，这样读到的数据就是错误的，
+所以在两个字节顺序不一样的机器上传输数据时需要特别小心字节顺序，理解了字节顺序在可以帮助我们写出移植行更高的代码。
+
+
+正因为有字节顺序的差别，所以在网络传输的时候定义了所有字节顺序相关的数据都使用big-endian，BSD的代码中定义了四个宏来理：
+
+{% highlight c %}
+#define ntohs(n)      //网络字节顺序到主机字节顺序 n代表net, h代表host, s代表short
+#define htons(n)      //主机字节顺序到网络字节顺序 n代表net, h代表host, s代表short
+#define ntohl(n)      //网络字节顺序到主机字节顺序 n代表net, h代表host, s代表long
+#define htonl(n)      //主机字节顺序到网络字节顺序 n代表net, h代表host, s代表long
+{% endhighlight %}
+
+*********************************************************************
+
+这下应该明白为什么了吧。。。另外再提醒一下：我们只需要关注字节顺序即可，字节内部的顺序我们只要认为和逻辑顺序一致即可。
