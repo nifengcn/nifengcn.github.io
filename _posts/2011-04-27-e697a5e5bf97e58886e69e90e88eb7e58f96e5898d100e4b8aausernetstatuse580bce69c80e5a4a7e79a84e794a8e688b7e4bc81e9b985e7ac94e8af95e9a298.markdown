@@ -1,0 +1,316 @@
+---
+author: nifeng
+comments: true
+date: 2011-04-27 07:58:57+00:00
+layout: post
+slug: '%e6%97%a5%e5%bf%97%e5%88%86%e6%9e%90%e8%8e%b7%e5%8f%96%e5%89%8d100%e4%b8%aausernetstatus%e5%80%bc%e6%9c%80%e5%a4%a7%e7%9a%84%e7%94%a8%e6%88%b7%e4%bc%81%e9%b9%85%e7%ac%94%e8%af%95%e9%a2%98'
+title: 日志分析,获取前100个userNetStatus值最大的用户(企鹅笔试题)
+wordpress_id: 123
+categories:
+- tech
+tags:
+- 数据结构
+- 算法
+---
+
+##题目描述##
+
+某日志服务器留下350G的日志信息。其信息的基本格式如下：
+
+{% highlight c++ %}
+struct LogUnit
+{
+    INT64 userID;
+    //用户ID在当次登录时候所获取的网络某评估状态值
+    //每登录一次，由服务器生成一个浮点数
+    //该数字用于评估该次连接的网络情况
+    float userNetStatus;
+    Ctime loginTime;
+}
+{% endhighlight %}
+
+现在相对该日志信息进行分析，来获取前100个userNetStatus值最大的用户
+（如果日志中同一个用户登录多次，则按该用户最大的userNetStatus 来作
+
+为用户的userNetStatus值）。
+日志文件中，同一个用户可能登录多次，用户总数上亿。
+请为服务器设计算法完成该任务，要求占用内存尽可能少，算法尽可能快
+（服务器配置：内存4g，硬盘 希捷500G）
+
+服务器程序库只提供如下接口，仅能对日志文件扫描一次：
+
+{% highlight c++ %}
+Class LogFound
+{
+private:
+    LogFound();
+public:
+    static LogFound* GetInstance();
+    bool GetNextLog (logUnit& logUnit);
+    ...
+}
+{% endhighlight %}
+
+使用方法如下：
+
+{% highlight c++ %}
+LogFound::GetInstance()->GetNextLog(logUnit);
+{% endhighlight %}
+
+##思路分析##
+
+这是个TOPK的问题，我们首先考虑到用堆来实现，由于是找100个userNetStatus值最大，我们需要维护一个包括100个元素的最小堆，
+
+1.  取LogFound::GetInstance()->GetNextLog(logUnit)中的logUnit的userNetStatus与当前堆顶元素比较，
+    如果比堆顶元素大，那么底下执行步骤2，
+    否则转到步骤1
+2.  查找堆中是否已经拥有该userID,如果没有则直接加入，如果有则进入步骤3
+3.  比较两者userNetStatus的大小，如果大于的话则替换，如果小于的话，则不替换，转步骤1
+
+大体的算法流程如下：
+数据结构包括堆，另外由于需要进行查找是否拥有userID,考虑效率的话，我们使用map来实现查找，key为用户ID，value为其在堆中的位置，
+实际上就是在堆上加上一个索引的功能，考虑到数据量非常大，我们使用hash_map作为数据结构
+（关于map和hash_map的区别，有时间的话在另一篇文章中加以说明）。
+该方法的缺点是：如果有几个用户的userNetStatus都是第100大的话，会取先进入堆的做为结果，也就是在文件前面的占优。
+
+主要的思路就是这样，底下直接付上原码，原码才是王道呀！！！原码部分类的定义和测试用例，即indexMinHeap.h,indexMinHeap.cpp和testDemo.cpp。
+
+indexMinHeap.h部分：
+
+{% highlight c++ %}
+#ifndef INDEX_MIN_HEAP_H
+#define INDEX_MIN_HEAP_H
+#include <hash_map>
+#include <iostream>
+using namespace std;
+using namespace stdext;
+
+typedef unsigned long long INT64;
+
+class Ctime{
+    Ctime & operator =(const Ctime& item)
+    {
+        return *this;
+    }
+};
+
+struct LogUnit{
+    INT64 userID;
+    //用户ID在当次登录时候所获取的网络某评估状态值
+    //每登录一次，由服务器生成一个浮点数
+    //该数字用于评估该次连接的网络情况
+    float userNetStatus;
+    Ctime loginTime;
+    LogUnit& operator=(const LogUnit &item)
+    {
+        this->userID=item.userID;
+        this->userNetStatus=item.userNetStatus;
+        return *this;
+    }
+};
+
+class indexMinHeap
+{
+public:
+    indexMinHeap(int size):maxSize(size),curSize(0)
+    {
+        heap=new LogUnit[maxSize];
+    }
+    LogUnit& top();                                     //取堆顶
+    void popReplace(const LogUnit &item);               //替换堆顶
+    void insert(const LogUnit& item);                   //插入一个新的元素
+    int isInHeap(INT64 userID);                         //判断userID是否在堆中,若不在返回-1，若在的话，返回其位置
+    void increaseKey(int index,const LogUnit &item);    //当userID在堆中，且堆中的userNetStatus较小时
+    void shiftDown(int start,int m);                    //下滑调整
+    void filterUp(int start);                           //上滑调整
+    int getSize()                                       //取得当前堆中的元素个数
+    {
+        return curSize;
+    }
+    float getNetStatus(int index){
+        return heap[index].userNetStatus;
+    }
+    ~indexMinHeap(void){
+        delete []heap;
+    }
+    void printAllElements();
+    private:
+        LogUnit *heap;
+        int maxSize;
+        int curSize;
+        hash_map<INT64,int> indexHash;
+};
+
+#endif
+{% endhighlight %}
+
+indexMinHeap.cpp部分：
+
+{% highlight c++ %}
+#include "indexMinHeap.h"
+LogUnit& indexMinHeap::top()
+{
+    return heap[0];
+}
+
+void indexMinHeap::popReplace(const LogUnit &item)
+{
+    indexHash.erase(indexHash.find(heap[0].userID));
+    heap[0]=item;
+    indexHash[item.userID]=0;
+    shiftDown(0,curSize-1);
+}
+
+void indexMinHeap::insert(const LogUnit& item)
+{
+    heap[curSize]=item;
+    indexHash[item.userID]=curSize;
+    filterUp(curSize);
+    curSize++;
+}
+
+int indexMinHeap::isInHeap(INT64 userID)
+{
+    int index;
+    if (indexHash.find(userID)!=indexHash.end()) {
+        index=indexHash[userID];
+    } else {
+        index=-1;
+    }
+    return index;
+}
+
+void indexMinHeap::increaseKey(int index,const LogUnit &item)
+{
+    heap[index]=item;
+    shiftDown(index,curSize-1);
+}
+
+void indexMinHeap::shiftDown(int start,int m)
+{
+    int i=start,j=2*i+1;
+    LogUnit temp=heap[i];
+    while (j<=m) {
+        if(j<m && heap[j].userNetStatus>heap[j+1].userNetStatus) {
+            j++;
+        }
+        if (temp.userNetStatus<=heap[j].userNetStatus) {
+            break;
+        } else {
+            heap[i]=heap[j];
+            indexHash[heap[j].userID]=i;
+            i=j;
+            j=2*i+1;
+        }
+    }
+    heap[i]=temp;
+    indexHash[temp.userID]=i;
+}
+
+void indexMinHeap::filterUp(int start)
+{
+    int i=start,j=(i-1)/2;
+    LogUnit temp=heap[i];
+    while (i>0) {
+        if (temp.userNetStatus>=heap[j].userNetStatus) {
+            break;
+        } else {
+            heap[i]=heap[j];
+            indexHash[heap[j].userID]=i;
+            i=j;
+            j=(i-1)/2;
+        }
+        heap[i]=temp;
+        indexHash[temp.userID]=i;
+    }
+}
+
+void indexMinHeap::printAllElements()
+{
+    cout<<"top N是："<<endl;
+    for (int i=0;i<curSize;i++) {
+        cout<<heap[i].userID<<'\t';
+    }
+    cout<<endl;
+}
+{% endhighlight %}
+
+testDemo.cpp部分：
+
+{% highlight c++ %}
+#include "indexMinHeap.h"
+#include <iostream>
+using namespace std;
+
+int main(int argc,char * argv[]){
+    const int heapNum=4;
+    indexMinHeap indexHeap(heapNum);
+
+    const int caseNum=10;
+    LogUnit cases[caseNum];
+    
+    cases[0].userID=1;
+    cases[1].userID=2;
+    cases[2].userID=2;
+    cases[3].userID=4;
+    cases[4].userID=5;
+    cases[5].userID=4;
+    cases[6].userID=6;
+    cases[7].userID=7;
+    cases[8].userID=7;
+    cases[9].userID=6;
+
+    cases[0].userNetStatus=1;
+    cases[1].userNetStatus=2;
+    cases[2].userNetStatus=3;
+    cases[3].userNetStatus=4;
+    cases[4].userNetStatus=5;
+    cases[5].userNetStatus=6;
+    cases[6].userNetStatus=1;
+    cases[7].userNetStatus=1;
+    cases[8].userNetStatus=9;
+    cases[9].userNetStatus=10;
+
+    int indexOfLog=0;
+    indexHeap.insert(cases[indexOfLog]);
+    indexOfLog++;
+    while (indexOfLog<caseNum) {
+        LogUnit current=cases[indexOfLog++];
+        int index;
+        //当堆没有满时
+        if (indexHeap.getSize()<heapNum) {
+            index=indexHeap.isInHeap(current.userID);
+            if (-1==index) {
+                indexHeap.insert(current);
+            } else {
+                if (current.userNetStatus>indexHeap.getNetStatus(index)) {
+                    indexHeap.increaseKey(index,current);
+                } else {
+                    continue;
+                }
+            }
+        } else {
+            if(current.userNetStatus<=indexHeap.top().userNetStatus) {
+                continue;
+            } else {
+                index=indexHeap.isInHeap(current.userID);
+                if (-1==index) {
+                    indexHeap.popReplace(current);
+                } else {
+                    if (current.userNetStatus>indexHeap.getNetStatus(indeX)) {
+                        indexHeap.increaseKey(index,current);
+                    } else {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+    indexHeap.printAllElements();
+    return 0;
+}
+{% endhighlight %}
+
+最终的测试结果如下：
+
+[![DemoResults](http://173.208.220.51/wp-content/uploads/2011/04/QQ面试题结果图.bmp)](http://173.208.220.51/wp-content/uploads/2011/04/QQ面试题结果图.bmp)
