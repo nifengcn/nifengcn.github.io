@@ -1,0 +1,27 @@
+---
+author: nifeng
+comments: true
+date: 2010-12-20 03:37:15+00:00
+layout: post
+slug: '%e5%85%b3%e4%ba%8emap%e4%bd%bf%e7%94%a8put%e6%96%b9%e6%b3%95%e6%b7%bb%e5%8a%a0%e5%af%b9%e8%b1%a1%e6%97%b6%e5%87%ba%e7%8e%b0%e7%9a%84%e9%97%ae%e9%a2%98%e4%bd%bf%e7%94%a8%e6%9c%aa%e7%bb%8f%e6%a3%80'
+title: 关于map使用put方法添加对象时出现的问题:使用未经检查和不安全的操作
+wordpress_id: 57
+categories: tech
+tags: JAVA
+---
+
+原来的代码:
+{% highlight java %}
+Map m=new HashMap();
+m.put("aa","abc");
+{% endhighlight %}
+
+上述代码在编译时会出现如下提示:使用了未经检查或不安全的操作.但是编译后的程序还是可以运行的.
+如果在编译时加上-Xlint:unchecked参数,则可以了解到更为详细的信息.
+更改为泛型使用方式,则可以顺利地通过编译.
+更改后为:
+
+{% highlight java %}
+Map<String,String> m=new HashMap<String,String>();
+m.put("aa","abc");
+{% endhighlight %}
