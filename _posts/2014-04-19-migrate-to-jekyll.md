@@ -15,3 +15,12 @@ tags: [jekyll, ruby]
 ### 注意点:
 - jekyll serve的--detach参数与--watch参数不能共用，detach会导致autorebuild功能失效。这是一个已知问题。(具体可参见#1742)
 - 使用自动build功能时，指定配置文件不然每次修改其它文件都会导致配置文件中的修改内容被覆盖。
+
+## 备注
+* [jekyll][jekyll]
+* [jekyllbootstrap][jekyllbootstrap]
+
+
+
+[jekyll]:<http://jekyllrb.com/>
+[jekyllbootstrap]:<http://jekyllbootstrap.com/>
