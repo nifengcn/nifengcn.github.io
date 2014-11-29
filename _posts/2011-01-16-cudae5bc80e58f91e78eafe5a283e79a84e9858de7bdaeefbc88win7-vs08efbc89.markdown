@@ -1,0 +1,80 @@
+---
+author: nifeng
+comments: true
+date: 2011-01-16 04:32:04+00:00
+layout: post
+slug: cuda%e5%bc%80%e5%8f%91%e7%8e%af%e5%a2%83%e7%9a%84%e9%85%8d%e7%bd%ae%ef%bc%88win7-vs08%ef%bc%89
+title: cuda开发环境的配置（win7 vs08）
+wordpress_id: 82
+categories: tech
+tags: cuda
+---
+
+>硬件：NVIDIA GeForce GT 335
+>
+>软件：win7 32bit操作系统 Microsoft Visual Studio 2008
+
+1.  **下载**
+
+    下载driver,toolkit和sdk；
+    地址：[http://developer.nvidia.com/object/cuda_3_1_downloads.html][download1],目前最新的版本是3.1
+
+2.  **安装**
+
+    电脑上事先装好了驱动，驱动程序版本是257.29
+    依次安装toolkit和sdk。
+    安装完之后可以用提供的浏览器查看一些例子，分为三类：CUDA C SAMPLE；OPENCL SAMPLES；DIRECTCOMPUTE SAMPLES
+    其中DIRECTCOMPUTE SAMPLES运行不了，显示电脑硬件不支持。
+
+    OpenCL (全称Open Computing Language，开放运算语言)是第一个面向异构系统通用目的并行编程的开放式、免费标准，
+    也是一个统一的编程环境，便于软件开发人员为高性能计算服务器、桌面计算系统、手持设备编写高效轻便的代码，
+    而且广泛适用于多核心处理器(CPU)、图形处理器(GPU)、Cell类型架构以及数字信号处理器(DSP)等其他并行处理器，
+    在游戏、娱乐、科研、医疗等各种领域都有广阔的发展前景。
+
+    配置环境变量：
+
+    TOOKIT三个：
+
+    >CUDA_BIN_PATH=D:\program\cuda\toolkit\bin
+
+    >CUDA_INC_PATH=D:\program\cuda\toolkit\include
+
+    >CUDA_LIB_PATH=D:\program\cuda\toolkit\lib
+
+    SDK两个：
+
+    >NVSDKCOMPUTE_ROOT= D:\program\cuda\NVIDIA GPU Computing SDK
+
+    > NVSDKCUDA_ROOT= D:\program\cuda\NVIDIA GPU Computing SDK\C
+
+3.  **配置VS2008的编译环境**
+
+    最简单的方法就是使用起赵开勇开发的CUDA VS WIZARD，提供了32位和64位两种版本,
+    网址：[http://sourceforge.net/projects/cudavswizard/][download2]
+
+    应用该向导生成的应用程序会提供一个示例：文件名：sample.cu。直接编译会出现丢失cutil32D.dll的错误。还需要添加一个CUDA_DLL的变量：
+    `CUDA_DLL=D:\program\cuda\NVIDIA GPU Computing SDK\C\bin\win32\Debug；`将CUDA_DLL添加到Path路径中去。
+    至此，必须的步骤已经完成，已经可以在VS08中运行CUDA程序。
+
+4.  **语法高亮**
+
+    *  添加扩展名
+        将`D:\program\cuda\NVIDIA GPU Computing SDK\C\doc\syntax_highlighting\ visual_studio_8`
+        目录下的usertype.dat拷贝到Microsoft Visual Studio 8\ Common7\ IDE
+
+        在VC++目录中添加扩展名：\*.cu
+
+        在VC++项目和解决方案中
+
+        在文件扩展名中添加cu，对应到microsoft vc++编辑器
+
+    *  VC助手的设置
+        HKEY_CURRENT_USER\Software\Whole Tomato\Visual Assist X\VANet9的右边extsource项中，添加.cu;.cuh;
+
+        打开Visual Assistant X Options，在Projects->C/C++ Directories 里，
+        Platform选择Custom，Show Directories for选择Stable include files，添加D:\CUDA\Toolkit\include
+
+
+
+[download1]:<http://developer.nvidia.com/object/cuda_3_1_downloads.html>
+[download2]:<http://sourceforge.net/projects/cudavswizard/>

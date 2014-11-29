@@ -1,0 +1,15 @@
+---
+author: nifeng
+comments: true
+date: 2011-03-28 14:14:38+00:00
+layout: post
+slug: '%e8%bd%ac%e7%a5%9e%e7%a7%98%e5%b8%b8%e9%87%8f%e5%a4%8d%e5%87%ba%ef%bc%81%e7%94%a80x077cb531%e8%ae%a1%e7%ae%97%e6%9c%ab%e5%b0%be0%e7%9a%84%e4%b8%aa%e6%95%b0-%ef%bc%81%ef%bc%81'
+title: what the fuck
+wordpress_id: 110
+categories: tech
+tags: what the fuck
+---
+#### what the fuck ####
+
+* [神秘常量复出！用0x077CB531计算末尾0的个数 ！！](http://www.matrix67.com/blog/archives/3985)
+* [神秘的0x5f3759df 不可思议的Quake III源码](http://www.matrix67.com/blog/archives/362)

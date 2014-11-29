@@ -1,0 +1,94 @@
+---
+author: nifeng
+comments: true
+date: 2011-01-25 06:14:09+00:00
+layout: post
+slug: cpu%e5%8d%a0%e7%94%a8%e7%8e%87%e6%9b%b2%e7%ba%bf
+title: CPU占用率曲线
+wordpress_id: 87
+categories:
+- tech
+---
+任务管理器大约是1秒钟更新一次，那么CPU的使用率可以表示成如下的形式：
+
+>CPU的使用率（任务管理器）=1秒内CPU运行的时间/1秒。
+
+编程来实现的基本思路就是让程序运行一段时间，然后休息一段时间，这一过程我们称之为一个程序周期。
+在一个程序周期中，CPU的使用率（一个程序周期）=程序运行的一段时间/(程序运行的一段时间+休息的一段时间)。
+那么CPU的使用率（任务管理器）也就是一秒钟内多个程序周期的CPU的使用率（一个程序周期）的平均值。
+
+怎么才能让程序运行一段时间呢？用循环；怎么才能让程序休息呢？
+操作系统课上讲过进程的几种状态，像就绪，执行，等待等等，我们这里用sleep()函数。
+好了，底下的问题就是前面提到的运行一段时间和休息一段时间中“一段时间”到底是多少才合适。
+根据前面的思路，CPU的使用率是个统计概念，那么我们希望样本越多越好，也就是1秒内程序周期越多越好，也就是说我们希望“一段时间”越小越好，
+但是由于sleep()实际上是操作系统内核对程序的干扰，过多的内核调度会增加一些不确定的影响，这是我们所不希望的，所以这个“一段时间”也不能太小。
+这里我们将一段时间取为10毫秒，而且这也比较接近Windows的调度时间片。
+
+经过上面的分析，我们可以通过如下的代码实现让CPU的占用率为50%的功能：
+
+{% highlight c++ %}
+int _tmain(int argc, _TCHAR* argv[]) {
+    int busyTime=10;
+    int idleTime=busyTime;
+    DWORD startTime=0;  //typedef unsigned long DWORD
+
+    ///////////////////////////////////////////////////////
+
+    //SYSTEM_INFO sysInfo;
+    //GetSystemInfo(&sysInfo);
+    // cout<<sysInfo.dwNumberOfProcessors<<endl;
+    //SetThreadAffinityMask(GetCurrentThread(),0x00000002);
+
+    ///////////////////////////////////////////////////////
+
+    while (true)
+    {
+        startTime=GetTickCount();
+        while ((GetTickCount()-startTime)<=busyTime)
+            ;
+        sleep(idleTime);
+    }
+    return 0;
+}
+{% endhighlight %}
+
+如果将中间的注释的代码取消注释，那么这个进行将锁在CPU的第2 个核上。
+这里就涉及到多CPU，多核，多线程（使用超线程技术）的概念，对于多CPU和多核就不多说了，简单地说下超线程技术，
+这个技术是采用某种虚拟技术虚拟出一个计算机内核（但是实际上这个内核是不存在的），比例现在好多计算机明明只有两个核，
+在打开设备管理器的时候却发现有四个核。下面我们就对GetSystemInfo和SetThreadAffinityMask这两个函数做一些说明。
+
+GetSystemInfo的函数原型：
+
+{% highlight c++ %}
+void WINAPI GetSystemInfo(
+    __out   LPSYSTEM_INFO _lpSystemInfo_
+);
+{% endhighlight %}
+
+lpSystemInfo是一个结构体指针，这个结构体中包含了一些系统硬件的信息，具体有哪些信息大家可以查下MSDN，
+这里的我们只关心结构体中dwNumberOfProcessors这个属性，它表示的计算机中内核的个数
+（应该是个意思，具体的还有待考证，也就是说多CPU，多核，多线程这个概念对这个字段是怎么个影响我也并不知道，由于硬条条件限制，
+没办法去考证，有条件的可以测试下）。我的电脑是1个CPU两个核，没有采用超线程技术，所以这个字段是在我的电脑中是2 。
+
+SetThreadAffinityMask的函数原型：
+
+{% highlight c++ %}
+DWORD_PTR WINAPI SetThreadAffinityMask(
+__in    HANDLE _hThread_,
+__in    DWORD_PTR _dwThreadAffinityMask_
+);
+{% endhighlight %}
+
+第一个参数是所要绑定到内核上的线程的句柄，第二个参数是用来指定哪个内核的。第一个参数比较简单，我们来说说第二个参数。
+这里涉及到这么一个字段----_dwThreadAffinityMask_，我看到在有些地方被翻译成了线程亲缘性屏蔽，我们这里不作翻译。
+这个字段的类型是`DWORD_PTR`，实际上就是unsigned long,通常是用十六进制来表示的，
+也就是0x00000000(long在VS08中是占4个字节，也就是32位，十六进制中的一位对应二进制中的四位，所以0x后面是8位)。
+具体哪个内核是由32位中相应的位表示的，也就是如果将线程指定到第一个内核上，那么_dwThreadAffinityMask_就是0x00000001,
+如果将线程指定到第二个内核上，那么_dwThreadAffinityMask_就是0x00000002（记住指定的内核是由位来表示的，相应的位为1，则表示该内核被绑定）；
+如果将线程指定到第二个内核和第三个内核上，那么_dwThreadAffinityMask_就是0x00000006。
+
+到此为止，让CPU的占用率听你指挥的问题基本解决了。至于画正弦曲线，只要你明白了这其中的原理，其实还是不难的。
+但是还存在一个问题，那就是运行上面的代码你会发现曲线只是近似地等于50%，还是存在一些小的波动的，
+这是因为电脑中不仅仅这个程序在运行，同时还有其它的一些程序，所以对曲线造成了干扰。
+编程之美这本书提到了用PerformanceCounter这一对象来获取当前CPU的使用率，然后再根据这个当前的CPU的使用情形来动态调节。
+但是由于PerformanceCounter是包含在.NET组件中，目前还不知道在vc++环境中给PerformanceCounter的构造函数传什么样的参数，所以。。。

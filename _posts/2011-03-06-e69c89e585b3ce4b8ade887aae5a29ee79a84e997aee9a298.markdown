@@ -1,0 +1,47 @@
+---
+author: nifeng
+comments: true
+date: 2011-03-06 05:11:45+00:00
+layout: post
+slug: '%e6%9c%89%e5%85%b3c%e4%b8%ad%e8%87%aa%e5%a2%9e%e7%9a%84%e9%97%ae%e9%a2%98'
+title: 有关C++中自增的问题
+wordpress_id: 99
+categories: tech
+tags: [C, C++]
+---
+一直以为对自增运算已经完全理解了，今天做了道题，才发现自己的理解还是不够全面。我们来看下面这道题：
+
+{% highlight c++ %}
+int a=2;
+int b=a++*++a*a++*++a;
+{% endhighlight %}
+
+在上面语句执行之后，a=6,b=256，我们来看下：++a，属于前置++在优先于“;”进行运算。a++属于后置++，在“;”之后运算。
+上面的代码过程如下：a初始化为2,++a,++a两次前置运算后，a=4;
+
+{% highlight c++ %}
+b=a*a*a*a=4*4*4*4=256;
+{% endhighlight %}
+
+a++,a++两次后置运算是在“;”之后执行的，不影响b 的结果，只影响a的值，a=6;
+以上的结果是在VC编译器中得出的结果，后来根据基锅提供的在GCC中编译的结果如下：
+
+{% highlight c++ %}
+#include
+int main() {
+    int a=2;
+    int b=a++*++a*a++*++a;
+    printf(“b=%d\n”,b);
+    printf(“a=%d\n”,a);
+    return 0;
+}
+{% endhighlight %}
+
+———–output————
+
+{% highlight c++ %}
+b=108
+a=6
+{% endhighlight %}
+
+也就是说这样的运算结果是和编译器相关的，所以通常情况这种问题没有太大意义，所以说我们应该在编程中避免这样的写法。
