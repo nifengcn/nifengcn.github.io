@@ -1,0 +1,49 @@
+---
+author: nifeng
+comments: true
+date: 2010-12-20 03:39:22+00:00
+layout: post
+slug: jsp%e4%b8%ad%e7%9a%84%e4%b8%ad%e6%96%87%e4%b9%b1%e7%a0%81%e4%b8%80
+title: JSP中的中文乱码(一)
+wordpress_id: 61
+categories: tech
+tags: JAVA
+---
+
+1.  造成乱码的原因:
+
+    造成乱码的根本原因是字符集编码的问题.charset是字符集,encoding是编码,这其实是两个不同的概念.
+
+    **字符集**:就是字符的集合,该集合中的每一个字符都有一个编号;
+
+    **编码**:就是上面提到的编号与二进制的交互.
+
+    我们做网页时，如果指定的 Charset 是 GB2312，那么就不应该在网页中出现繁体字，因为 GB2312 标准 只有几千个简体的中文字。
+    如果我们的网页编码是 UTF-8，我们就不要指定字符集是 GB2312，因为虽然 UTF-8 编码对应的 UTF-8 字符集包含了 GB2312 的字符，
+    但同一个字符在两个字符集中的编号不一样。在JSP中,
+
+    `<%@ page pageEncoding="UTF-8" %>`这里指的是JSP的编码格式,也就是JSP文件的存储格式.Eclipse根据这个格式存储并编译文件.
+
+    `<%@ page contentType="text/html;charset="GB2312" %>`这里指定的是解码格式.
+
+    `<meta http-equiv="Content-Type" content="text/html;charset=GB2312">`这里指定的是浏览器的解码格式,在游览器的"编码"中是可以修改的.
+    其中,JSP的编码格式和解码格式必须一致,也就是第一个和第二个必须保持一致.
+
+2.  解决方案:
+
+    (1)在页面中出现乱码,只须指定如下指令即可:`<%@ page contentType="text/html;charset="GB2312" %>`
+
+    (2)提交表单时出现中文乱码:使用request.getParameter("")出现乱码,tomcat处理提交的参数时默认使用的是ISO-8859-1,
+    表单提交方式不同(GET和POST),解决方法也不同.
+
+        A)POST处理:
+
+        针对单个参数,可用如下方法解决:
+
+        `String str=new String(request.getParameter("").getBytes("ISO-8859-1"),"GB2312");`
+
+        针对整个页面的参数,可用如下方法解决:
+
+        `request.setCharacterEncoding("GB2312");`
+
+        为了避免每一页都要写request.setCharacterEncoding("GB2312"),可以使用过滤器对所有JSP进行编码处理.(未完待续...)

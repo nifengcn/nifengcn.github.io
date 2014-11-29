@@ -1,0 +1,59 @@
+---
+author: nifeng
+comments: true
+date: 2010-12-20 03:39:55+00:00
+layout: post
+slug: java-%e5%92%8cc%e7%9a%84%e6%af%94%e8%be%83
+title: java 和C++的比较
+wordpress_id: 63
+categories: tech
+tags: JAVA
+---
+
+1.  JAVA中的引用与C++中的引用是完全不同的概念，JAVA中的引用更类似于C++中的加上了保护措施的指针。
+
+2.  C++类中的函数默认情况下静态绑定，如果要实现多态的话，必须在函数前面加上virtual关键字，即指明这是一个虚函数，才能实现动态绑定；
+    而JAVA中默认的就是动态绑定。
+
+3.  C++中的赋值通常会执行一次拷贝，会生成一个新的副本；JAVA中通常仅传递一个引用，赋值号左右都指向同一个数据对象。
+    这里涉及到一个术语的争论“pass by value”，C++中有两种传递方式，即值传递和引用传递，由于C++中的引用与JAVA中的引用是两个完全不同的概念，
+    所以和C++相比的话，说JAVA中仅仅支持“pass by value”是可以的。在传递基本型别时，没有任何问题，当传递的是一个引用时，
+    实际上获得是该引用的一个副本，这两个引用指用同一个对象（关于这一点可以联系1中所提到的JAVA中的引用类似于C++中的指针）。
+
+4.  C++中的基本类型所占的位数并不是固定的，而是与具体的机器相关，有sizeof()来检测其所占的字节数；
+    而JAVA中每个基本类型所占的位数是固定的，因为JAVA程序是在JVM上执行的，JVM屏蔽了各个机器之间的差异。
+    需要注意的是布尔型，在C++中布尔型属于整型，可以和其它整型进行转化，而在JAVA中布尔型和整型没有任何关系，而且在JAVA中布尔型只占1位。
+
+5.  C++中only static const integral data members can be initialized within a class；而JAVA中对任何类型的变量都可以在内部初始化。
+
+6.  C++中const修饰的变量在定义时必须初始化（注意定义和声明的区别）；
+    而JAVA中修饰的变量可以先定义然后再赋值，但是只能进行一次赋值(JAVA中貌似对声明和定义没有进行严格的划分，有待进一步考查)。
+
+注：
+C++中的非const变量默认为extern。如果要使const变量能够在其他文件中访问，必然显式指定为extern。
+例：
+{% highlight c++ %}
+//file1.cpp
+
+int counter;
+
+//file2.cpp
+
+extern int counter;
+
+++counter;
+{% endhighlight %}
+
+_______________________________________________________
+
+{% highlight c++ %}
+// file1.cpp
+
+extern const int counter=4;
+
+//file2.cpp
+
+extern const int counter;
+{% endhighlight %}
+
+（未完待续）

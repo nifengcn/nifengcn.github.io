@@ -1,0 +1,21 @@
+---
+author: nifeng
+comments: true
+date: 2010-12-20 02:45:59+00:00
+layout: post
+slug: matlab%e4%b8%ad%e6%96%b9%e5%b7%ae%e7%9a%84%e5%ae%9a%e4%b9%89%e4%bb%a5%e5%8f%8a%e6%b1%82%e9%ab%98%e7%bb%b4%e5%86%85%e7%a7%af%e7%9a%84%e4%b8%80%e4%b8%aa%e6%96%b9%e6%b3%95
+title: matlab中方差的定义以及求高维内积的一个方法
+wordpress_id: 28
+categories: tech
+tags: matlab
+---
+
+matlab中方差的定义中,最后除以的是N-1,而不是N,(N为样本的个数)当然工科数学里就是这么定义.
+但是数学专业中最后除以的是N,所以数学系的朋友应该注意一下
+.当然是了做定性分析的话,这个定义对结论没有什么影响,但是如果是定量的话,那么一定要注意一下这个问题.
+
+在MATLAB中求`A' *B`,即求A和B的内积时,对SIZE是有限制的,但是当SIZE过大直接用`A' *B`无法求解时,我们可以换个方法求,如下:
+
+`size(A)*mean(A.*B),`
+
+也就是说当SIZE过大,不能求`A' *B`时,却可以`A.*B`,这估计和MATLAB编写时的代码有关了.

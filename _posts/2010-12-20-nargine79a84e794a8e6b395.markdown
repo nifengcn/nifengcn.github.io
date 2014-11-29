@@ -1,0 +1,23 @@
+---
+author: nifeng
+comments: true
+date: 2010-12-20 03:36:30+00:00
+layout: post
+slug: nargin%e7%9a%84%e7%94%a8%e6%b3%95
+title: nargin的用法
+wordpress_id: 55
+categories: tech
+tags: matlab
+---
+
+nargin是用来判断输入变量个数的函数，这样就可以针对不同的情况执行不同的功能。通常可以用他来设定一些默认值，如下面的函数。
+例子，函数test1的功能是输出a和b的和。如果只输入一个变量，则认为另一个变量为0，如果两个变量都没有输入，则默认两者均为0。
+
+{% highlight matlab %}
+function y=test1(a,b)
+if nargin==0
+a=0;b=0;
+elseif nargin==1 b=0;
+end
+y=a+b;
+{% endhighlight %}
