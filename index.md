@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Chinese title is not supported???
+title: "chinese title is not supported???"
 tagline: Supporting tagline
 ---
 
