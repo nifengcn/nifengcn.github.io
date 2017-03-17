@@ -1,6 +1,6 @@
 ---
 layout: page
-title: "一地鸡毛"
+title: Chinese title is not supported???
 tagline: Supporting tagline
 ---
 
